@@ -1,0 +1,172 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Design Patterns Cheat Sheet</title>
+<meta name="description" content="Java design patterns, one card per pattern, written in my own words.">
+<script src="https://cdn.jsdelivr.net/npm/marked@12.0.2/marked.min.js"></script>
+<style>
+  :root {
+    --bg: #f6f5f1; --card: #ffffff; --ink: #1d1d1b; --muted: #6b6a64; --line: #e3e1d9;
+    --accent: #2f5d50; --accent-soft: #e4eee9; --code-bg: #f1efe8;
+    --creational: #2f5d50; --structural: #8a5a14; --behavioral: #5b4a8a;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #141513; --card: #1d1e1b; --ink: #ecebe6; --muted: #a09f97; --line: #2f302c;
+      --accent: #8fc7b3; --accent-soft: #23302b; --code-bg: #262723;
+      --creational: #8fc7b3; --structural: #e0b26a; --behavioral: #b9a8e6;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #141513; --card: #1d1e1b; --ink: #ecebe6; --muted: #a09f97; --line: #2f302c;
+    --accent: #8fc7b3; --accent-soft: #23302b; --code-bg: #262723;
+    --creational: #8fc7b3; --structural: #e0b26a; --behavioral: #b9a8e6;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--ink);
+    font: 15px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+  .wrap { max-width: 1180px; margin: 0 auto; padding: 28px 16px 60px; }
+  header h1 { margin: 0 0 4px; font-size: 26px; letter-spacing: -0.01em; }
+  header .intro { margin: 0; color: var(--muted); }
+  .bar { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin: 20px 0 18px; }
+  .bar input { flex: 1 1 220px; min-width: 0; padding: 9px 12px; border: 1px solid var(--line);
+    border-radius: 8px; background: var(--card); color: var(--ink); font: inherit; }
+  .chip, .btn { border: 1px solid var(--line); background: var(--card); color: var(--ink);
+    padding: 7px 12px; border-radius: 999px; font: inherit; font-size: 13px; cursor: pointer; text-decoration: none; }
+  .chip[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: var(--bg); }
+  .btn { border-radius: 8px; }
+  .count { color: var(--muted); font-size: 13px; margin-left: auto; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(330px, 1fr)); gap: 14px; }
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 16px 18px;
+    border-top: 4px solid var(--cat, var(--accent)); break-inside: avoid; }
+  .card h2 { margin: 0; font-size: 18px; }
+  .card .head { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; margin-bottom: 8px; }
+  .tag { font-size: 11px; text-transform: uppercase; letter-spacing: .06em; color: var(--cat, var(--accent)); font-weight: 600; }
+  .card p { margin: 6px 0; }
+  .card ol, .card ul { margin: 4px 0 6px; padding-left: 20px; }
+  .card li { margin: 2px 0; }
+  .card strong { color: var(--ink); }
+  code { font: 12.5px/1.4 ui-monospace, "Cascadia Code", Consolas, monospace; background: var(--code-bg);
+    padding: 1px 5px; border-radius: 4px; overflow-wrap: anywhere; }
+  pre { background: var(--code-bg); padding: 10px 12px; border-radius: 8px; overflow-x: auto; }
+  pre code { background: none; padding: 0; }
+  .empty, .error { color: var(--muted); padding: 30px 0; text-align: center; }
+  @media (max-width: 400px) { .grid { grid-template-columns: 1fr; } }
+  @media print {
+    body { background: #fff; color: #000; font-size: 11px; }
+    .bar, .noprint { display: none !important; }
+    .wrap { max-width: none; padding: 0; }
+    .grid { display: block; columns: 2; column-gap: 12px; }
+    .card { border: 1px solid #bbb; border-top-width: 3px; margin-bottom: 10px; padding: 8px 10px; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1 id="title">Design Patterns Cheat Sheet</h1>
+    <p class="intro" id="intro"></p>
+  </header>
+
+  <div class="bar">
+    <input id="q" type="search" placeholder="Search patterns, e.g. immutable, builder…" aria-label="Search">
+    <div id="cats" style="display:flex;gap:6px;flex-wrap:wrap"></div>
+    <a class="btn noprint" id="edit" target="_blank" rel="noopener" hidden>✏️ Edit</a>
+    <button class="btn noprint" onclick="window.print()">🖨 Print</button>
+    <span class="count" id="count"></span>
+  </div>
+
+  <main class="grid" id="grid"></main>
+  <p class="empty" id="empty" hidden>No pattern matches that search.</p>
+</div>
+
+<script>
+const catColor = { creational: 'var(--creational)', structural: 'var(--structural)', behavioral: 'var(--behavioral)' };
+let cards = [], activeCat = 'All';
+
+function slug(s) { return s.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, ''); }
+
+function parse(md) {
+  md = md.replace(/<!--[\s\S]*?-->/g, '').replace(/\r\n/g, '\n');
+  const parts = md.split(/^## +/m);
+  const head = parts.shift();
+  const t = head.match(/^# +(.+)$/m);
+  if (t) { document.getElementById('title').textContent = t[1].trim(); document.title = t[1].trim(); }
+  document.getElementById('intro').textContent = head.replace(/^# .*$/m, '').trim();
+
+  return parts.map(p => {
+    const lines = p.split('\n');
+    const name = lines.shift().trim();
+    let category = '';
+    const body = lines.filter(l => {
+      const m = l.match(/^\s*Category:\s*(.+)$/i);
+      if (m) { category = m[1].trim(); return false; }
+      return true;
+    }).map(l => l.replace(/^([A-Z][A-Za-z ]{1,20}):(\s|$)/, '**$1:**$2')).join('\n').trim();
+    return { name, category, body, text: (name + ' ' + category + ' ' + body).toLowerCase() };
+  });
+}
+
+function render() {
+  const q = document.getElementById('q').value.trim().toLowerCase();
+  const grid = document.getElementById('grid');
+  grid.innerHTML = '';
+  let shown = 0;
+  for (const c of cards) {
+    if (activeCat !== 'All' && c.category.toLowerCase() !== activeCat.toLowerCase()) continue;
+    if (q && !q.split(/\s+/).every(w => c.text.includes(w))) continue;
+    const el = document.createElement('article');
+    el.className = 'card';
+    el.id = slug(c.name);
+    const color = catColor[c.category.toLowerCase()];
+    if (color) el.style.setProperty('--cat', color);
+    el.innerHTML = `<div class="head"><h2></h2><span class="tag"></span></div>` + marked.parse(c.body, { breaks: true });
+    el.querySelector('h2').textContent = c.name;
+    el.querySelector('.tag').textContent = c.category;
+    grid.appendChild(el);
+    shown++;
+  }
+  document.getElementById('empty').hidden = shown > 0 || cards.length === 0;
+  document.getElementById('count').textContent = `${shown} of ${cards.length} pattern${cards.length === 1 ? '' : 's'}`;
+}
+
+function buildCats() {
+  const cats = ['All', ...new Set(cards.map(c => c.category).filter(Boolean))];
+  const box = document.getElementById('cats');
+  box.innerHTML = '';
+  if (cats.length < 3) return;
+  for (const cat of cats) {
+    const b = document.createElement('button');
+    b.className = 'chip'; b.textContent = cat;
+    b.setAttribute('aria-pressed', cat === activeCat);
+    b.onclick = () => { activeCat = cat; buildCats(); render(); };
+    box.appendChild(b);
+  }
+}
+
+function editLink() {
+  const host = location.hostname.match(/^([^.]+)\.github\.io$/);
+  const repo = location.pathname.split('/').filter(Boolean)[0];
+  if (!host || !repo) return;
+  const a = document.getElementById('edit');
+  a.href = `https://github.com/${host[1]}/${repo}/edit/main/cheatsheet.md`;
+  a.hidden = false;
+}
+
+fetch('cheatsheet.md?v=' + Date.now(), { cache: 'no-store' })
+  .then(r => { if (!r.ok) throw new Error(r.status); return r.text(); })
+  .then(md => {
+    cards = parse(md);
+    buildCats(); render();
+    if (location.hash) document.querySelector(location.hash)?.scrollIntoView();
+  })
+  .catch(() => {
+    document.getElementById('grid').innerHTML = '<p class="error">Could not load cheatsheet.md.</p>';
+  });
+document.getElementById('q').addEventListener('input', render);
+editLink();
+</script>
+</body>
+</html>
